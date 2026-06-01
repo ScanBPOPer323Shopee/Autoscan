@@ -1073,7 +1073,7 @@
                                         <div class="project-selector">
                                             <label class="radio-option"><input type="radio" name="projectType" value="VNDL" checked> VNDL</label>
                                             <label class="radio-option"><input type="radio" name="projectType" value="VNDB"> VNDB</label>
-                                            <label class="radio-option"><input type="radio" name="projectType" value="VND"> VND</label>                                        </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <div class="label">Scan Recording</div>
@@ -1160,7 +1160,6 @@
                                             <option value="ALL">All Stations</option>
                                             <option value="VNDL">VNDL</option>
                                             <option value="VNDB">VNDB</option>
-                                            <option value="VND">VND</option>
                                         </select>
                                     </div>
                                     <div class="filter-item">
@@ -1216,7 +1215,7 @@
                             <div class="table-header-sticky" style="border-radius:20px; padding:15px 30px;">
                                 <div class="vnd-filters" style="margin-top:0;">
                                     <div class="filter-item"><div class="label">Filter by Date</div><input type="date" id="filterFillrateDate" onchange="calculateFillRate()"></div>
-                                    <div class="filter-item"><div class="label">Filter by Station</div><select id="filterFillrateStation" onchange="calculateFillRate()"><option value="ALL">All Stations</option><option value="VNDL">VNDL</option><option value="VNDB">VNDB</option><option value="VND">VND</option></select></div>
+                                    <div class="filter-item"><div class="label">Filter by Station</div><select id="filterFillrateStation" onchange="calculateFillRate()"><option value="ALL">All Stations</option><option value="VNDL">VNDL</option><option value="VNDB">VNDB</option></select></div>
                                     <div class="filter-item"><div class="label">Filter by Team</div><select id="filterFillrateTeam" onchange="calculateFillRate()"><option value="ALL">All Teams</option><option value="Inbound">Inbound</option><option value="Inventory">Inventory</option><option value="Return">Return</option></select></div>
                                     <div class="filter-item"><div class="label">Filter by Shift</div><select id="filterFillrateShift" onchange="calculateFillRate()"><option value="ALL">All Shifts</option><option value="Day shift">Day shift</option><option value="Night shift">Night shift</option></select></div>
                                 </div>
@@ -1300,7 +1299,6 @@
                                         <option value="ALL">All Warehouses</option>
                                         <option value="VNDL">VNDL</option>
                                         <option value="VNDB">VNDB</option>
-                                        <option value="VND">VND</option>
                                     </select>
                                 </div>
                                 <div class="filter-item">
@@ -1363,7 +1361,6 @@
                                     <option value="ALL">All Warehouse</option>
                                     <option value="VNDB">VNDB</option>
                                     <option value="VNDL">VNDL</option>
-                                    <option value="VND">VND</option>
                                 </select>
                             </div>
                         <div class="filter-item">
@@ -1485,7 +1482,7 @@ function toggleAuth(type) {
 // Vào ứng dụng chính
 function enterApp() {
     const loginInput = document.getElementById('loginCode');
-    const validCodes = ["666893", "330154", "65116", "547243","546980","546984","325652","325650","325651","362726","336928","360987","333527","565659","547242","466794","547405"];
+    const validCodes = ["330154", "65116", "547243","546980","546984","325652","325650","325651","362726","336928","360987","333527","565659","547242","466794","547405"];
     
     if (validCodes.includes(loginInput.value.trim())) {
         document.getElementById('authScreen').style.display = 'none';
@@ -2010,7 +2007,7 @@ function filterVndData() {
                         if(filterDateVal) { const d = new Date(filterDateVal); targetDate = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`; }
                         const filtered = vndDatabase.filter(item => {
                             const matchDate = targetDate ? item.date === targetDate : true;
-                            const matchStation = filterStationVal === "ALL" ? ['VNDB', 'VNDL', 'VND'].includes(item.station) : item.station === filterStationVal;
+                            const matchStation = filterStationVal === "ALL" ? ['VNDB', 'VNDL'].includes(item.station) : item.station === filterStationVal;
                             const matchTeam = filterTeamVals.includes("ALL") ? true : filterTeamVals.includes(item.team);
                             let recordShift = "Day shift";
                             if (item.startTime && item.startTime.includes(":")) {
@@ -2025,7 +2022,6 @@ function filterVndData() {
                             if (item.team === 'Return') rowColor = "#ffebee"; 
                             else if (item.team === 'Inbound' && item.station === 'VNDL') rowColor = "#e3f2fd"; 
                             else if (item.team === 'Inbound' && item.station === 'VNDB') rowColor = "#efebe9"; 
-                            else if (item.team === 'Inbound' && item.station === 'VND') rowColor = "#e8f5e9";
                             else if (item.team === 'IV' || item.team === 'Inventory') rowColor = "#fffde7"; 
                             row.style.backgroundColor = rowColor; // Đảm bảo luôn ra số, nếu lỗi thì hiện 0
 const bookingNum = parseFloat(item.booking);
@@ -2061,7 +2057,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
             document.querySelectorAll('#fillratePage .filter-display').forEach(el => el.innerText = finalHeaderText);
 
             const targetTeams = ["Inbound", "Inventory", "Return"];
-            const targetStations = ["VNDB", "VNDL", "VND"];
+            const targetStations = ["VNDB", "VNDL"];
             const vendors = ["GRGR", "HT-VN", "MBB", "Agari", "SKT"];
 
             let selectedDateObj = filterDateInput ? new Date(filterDateInput) : new Date();
@@ -2077,7 +2073,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
 
         // 1. Thu thập khung giờ từ Booking (B)
         vndDatabase.forEach(item => {
-            const isTargetStation = ["VNDB", "VNDL", "VND"].includes(item.station);
+            const isTargetStation = ["VNDB", "VNDL"].includes(item.station);
             const matchStation = filterStationVal === "ALL" ? isTargetStation : item.station === filterStationVal;
             
             if (item.date === targetDateStr && matchStation && item.startTime) {
@@ -2264,7 +2260,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                         const matrixBody = document.getElementById('frMatrixBody');
                         const filterStationVal = document.getElementById('filterFillrateStation').value;
                         const filterTeamVal = document.getElementById('filterFillrateTeam').value;
-                        const targetStations = ["VNDB", "VNDL", "VND"];
+                        const targetStations = ["VNDB", "VNDL"];
                         const targetTeams = ["Inbound", "Inventory", "Return"];
                         
                         matrixHead.innerHTML = '';
@@ -2584,7 +2580,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
     dateList.reverse();
 
     const checkWh = (whName) => {
-        const allowed = ["VNDB", "VNDL", "VND"];
+        const allowed = ["VNDB", "VNDL"];
         if (filterWh === "ALL") return allowed.includes(whName);
         return whName === filterWh && allowed.includes(whName);
     };
