@@ -1073,6 +1073,7 @@
                                         <div class="project-selector">
                                             <label class="radio-option"><input type="radio" name="projectType" value="VNDL" checked> VNDL</label>
                                             <label class="radio-option"><input type="radio" name="projectType" value="VNDB"> VNDB</label>
+                                            <label class="radio-option"><input type="radio" name="projectType" value="VND"> VND</label>                                        </div>
                                     </div>
                                     <div>
                                         <div class="label">Scan Recording</div>
@@ -2768,8 +2769,6 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                                     rowColor = "#e3f2fd";
                                 } else if (data.team === 'Inbound' && data.warehouse === 'VNDB') {
                                     rowColor = "#efebe9";
-                                } else if (data.team === 'Inbound' && data.warehouse === 'VND') {
-                                    rowColor = "#e8f5e9";
                                 } else if (data.team === 'Inventory' || data.team === 'IV') {
                                     rowColor = "#fffde7";
                                 }
