@@ -1160,6 +1160,7 @@
                                             <option value="ALL">All Stations</option>
                                             <option value="VNDL">VNDL</option>
                                             <option value="VNDB">VNDB</option>
+                                            <option value="VND">VND</option>
                                         </select>
                                     </div>
                                     <div class="filter-item">
@@ -1215,7 +1216,7 @@
                             <div class="table-header-sticky" style="border-radius:20px; padding:15px 30px;">
                                 <div class="vnd-filters" style="margin-top:0;">
                                     <div class="filter-item"><div class="label">Filter by Date</div><input type="date" id="filterFillrateDate" onchange="calculateFillRate()"></div>
-                                    <div class="filter-item"><div class="label">Filter by Station</div><select id="filterFillrateStation" onchange="calculateFillRate()"><option value="ALL">All Stations</option><option value="VNDL">VNDL</option><option value="VNDB">VNDB</option></select></div>
+                                    <div class="filter-item"><div class="label">Filter by Station</div><select id="filterFillrateStation" onchange="calculateFillRate()"><option value="ALL">All Stations</option><option value="VNDL">VNDL</option><option value="VNDB">VNDB</option><option value="VND">VND</option></select></div>
                                     <div class="filter-item"><div class="label">Filter by Team</div><select id="filterFillrateTeam" onchange="calculateFillRate()"><option value="ALL">All Teams</option><option value="Inbound">Inbound</option><option value="Inventory">Inventory</option><option value="Return">Return</option></select></div>
                                     <div class="filter-item"><div class="label">Filter by Shift</div><select id="filterFillrateShift" onchange="calculateFillRate()"><option value="ALL">All Shifts</option><option value="Day shift">Day shift</option><option value="Night shift">Night shift</option></select></div>
                                 </div>
@@ -1299,6 +1300,7 @@
                                         <option value="ALL">All Warehouses</option>
                                         <option value="VNDL">VNDL</option>
                                         <option value="VNDB">VNDB</option>
+                                        <option value="VND">VND</option>
                                     </select>
                                 </div>
                                 <div class="filter-item">
@@ -1361,6 +1363,7 @@
                                     <option value="ALL">All Warehouse</option>
                                     <option value="VNDB">VNDB</option>
                                     <option value="VNDL">VNDL</option>
+                                    <option value="VND">VND</option>
                                 </select>
                             </div>
                         <div class="filter-item">
@@ -2007,7 +2010,7 @@ function filterVndData() {
                         if(filterDateVal) { const d = new Date(filterDateVal); targetDate = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`; }
                         const filtered = vndDatabase.filter(item => {
                             const matchDate = targetDate ? item.date === targetDate : true;
-                            const matchStation = filterStationVal === "ALL" ? ['VNDB', 'VNDL'].includes(item.station) : item.station === filterStationVal;
+                            const matchStation = filterStationVal === "ALL" ?['VNDB', 'VNDL', 'VND'].includes(item.station) : item.station === filterStationVal;
                             const matchTeam = filterTeamVals.includes("ALL") ? true : filterTeamVals.includes(item.team);
                             let recordShift = "Day shift";
                             if (item.startTime && item.startTime.includes(":")) {
@@ -2022,6 +2025,7 @@ function filterVndData() {
                             if (item.team === 'Return') rowColor = "#ffebee"; 
                             else if (item.team === 'Inbound' && item.station === 'VNDL') rowColor = "#e3f2fd"; 
                             else if (item.team === 'Inbound' && item.station === 'VNDB') rowColor = "#efebe9"; 
+                            else if (item.team === 'Inbound' && item.station === 'VND') rowColor = "#e8f5e9";
                             else if (item.team === 'IV' || item.team === 'Inventory') rowColor = "#fffde7"; 
                             row.style.backgroundColor = rowColor; // Đảm bảo luôn ra số, nếu lỗi thì hiện 0
 const bookingNum = parseFloat(item.booking);
@@ -2057,7 +2061,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
             document.querySelectorAll('#fillratePage .filter-display').forEach(el => el.innerText = finalHeaderText);
 
             const targetTeams = ["Inbound", "Inventory", "Return"];
-            const targetStations = ["VNDB", "VNDL"];
+            const targetStations = ["VNDB", "VNDL", "VND"];
             const vendors = ["GRGR", "HT-VN", "MBB", "Agari", "SKT"];
 
             let selectedDateObj = filterDateInput ? new Date(filterDateInput) : new Date();
@@ -2073,7 +2077,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
 
         // 1. Thu thập khung giờ từ Booking (B)
         vndDatabase.forEach(item => {
-            const isTargetStation = ["VNDB", "VNDL"].includes(item.station);
+            const isTargetStation = ["VNDB", "VNDL", "VND"].includes(item.station)
             const matchStation = filterStationVal === "ALL" ? isTargetStation : item.station === filterStationVal;
             
             if (item.date === targetDateStr && matchStation && item.startTime) {
@@ -2092,7 +2096,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
         latestActualRecords.forEach(item => {
             let actualTeam = (item.team === "IV" || item.team === "Inventory") ? "Inventory" : item.team;
             let recDate = new Date(item.time).toLocaleDateString('vi-VN');
-            const matchStation = filterStationVal === "ALL" ? ["VNDB", "VNDL"].includes(item.warehouse) : item.warehouse === filterStationVal;
+            const matchStation = filterStationVal === "ALL" ? ["VNDB", "VNDL", "VND"].includes(item.warehouse): item.warehouse === filterStationVal;
             const matchTeam = filterTeamVal === "ALL" ? ["Inbound", "Inventory", "Return"].includes(actualTeam) : actualTeam === filterTeamVal;
 
             if (recDate === selectedDateObj.toLocaleDateString('vi-VN') && matchStation && matchTeam && item.type === 'in') {
@@ -2580,7 +2584,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
     dateList.reverse();
 
     const checkWh = (whName) => {
-        const allowed = ["VNDB", "VNDL"];
+        const allowed = ["VNDB", "VNDL", "VND"];
         if (filterWh === "ALL") return allowed.includes(whName);
         return whName === filterWh && allowed.includes(whName);
     };
@@ -2765,6 +2769,9 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                                     rowColor = "#e3f2fd";
                                 } else if (data.team === 'Inbound' && data.warehouse === 'VNDB') {
                                     rowColor = "#efebe9";
+                                } else if (data.team === 'Inbound' && data.warehouse === 'VND') {
+                                     rowColor = "#e8f5e9";
+                                }
                                 } else if (data.team === 'Inventory' || data.team === 'IV') {
                                     rowColor = "#fffde7";
                                 }
@@ -2872,8 +2879,7 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                             const outVal = timeCell.querySelector('.out-time-val')?.innerText || "";
 
                             cells[0].innerHTML = `<select class="edit-input"><option value="Inbound" ${currentTeam === 'Inbound' ? 'selected' : ''}>Inbound</option><option value="Inventory" ${currentTeam === 'Inventory' ? 'selected' : ''}>Inventory</option><option value="Return" ${currentTeam === 'Return' ? 'selected' : ''}>Return</option></select>`;
-                            cells[1].innerHTML = `<select class="edit-input"><option value="VNDB" ${currentWarehouse === 'VNDB' ? 'selected' : ''}>VNDB</option><option value="VNDL" ${currentWarehouse === 'VNDL' ? 'selected' : ''}>VNDL</option></select>`;
-                            cells[2].innerHTML = `<select class="edit-input"><option value="GRGR" ${currentVendor === 'GRGR' ? 'selected' : ''}>GRGR</option><option value="HT-VN" ${currentVendor === 'HT-VN' ? 'selected' : ''}>HT-VN</option><option value="MBB" ${currentVendor === 'MBB' ? 'selected' : ''}>MBB</option><option value="Agari" ${currentVendor === 'Agari' ? 'selected' : ''}>Agari</option><option value="SKT" ${currentVendor === 'SKT' ? 'selected' : ''}>SKT</option></select>`;
+                            cells[1].innerHTML = `<select class="edit-input"><option value="VNDB" ${currentWarehouse === 'VNDB' ? 'selected' : ''}>VNDB</option><option value="VNDL" ${currentWarehouse === 'VNDL' ? 'selected' : ''}>VNDL</option><option value="VND" ${currentWarehouse === 'VND' ? 'selected' : ''}>VND</option></select>`;                            cells[2].innerHTML = `<select class="edit-input"><option value="GRGR" ${currentVendor === 'GRGR' ? 'selected' : ''}>GRGR</option><option value="HT-VN" ${currentVendor === 'HT-VN' ? 'selected' : ''}>HT-VN</option><option value="MBB" ${currentVendor === 'MBB' ? 'selected' : ''}>MBB</option><option value="Agari" ${currentVendor === 'Agari' ? 'selected' : ''}>Agari</option><option value="SKT" ${currentVendor === 'SKT' ? 'selected' : ''}>SKT</option></select>`;
                             
                             // Ô nhập giờ tách biệt để không bị lẫn
                             timeCell.innerHTML = `
