@@ -32,7 +32,7 @@
                         display: flex;
                         align-items: center;
                         gap: 10px;
-                        margin-bottom: 15px;
+                        margin-bottom: -15px;
                         padding-left: 5px;
                         animation: fadeIn 0.5s ease-in-out;
                     }
@@ -470,13 +470,13 @@
 
                     /* --- ĐÃ ĐIỀU CHỈNH: SUMMARY SANG TRÁI & BUNG PHẢI --- */
     .summary-container { 
-        position: fixed; 
-        bottom: 30px; 
-        left: 25px; /* Đẩy sang trái nằm trong Sidebar */
-        z-index: 9999; 
-        display: flex; 
-        align-items: flex-end; 
-    }
+    position: fixed; 
+    bottom: 12px;     /* ← Kéo xuống dưới (giảm từ 70 xuống 30) */
+    left: 230px;      /* ← Đẩy sang phải (tăng từ 25 lên 185) */
+    z-index: 9999; 
+    display: flex; 
+    align-items: flex-end; 
+}
 
     .summary-btn { 
         width: 55px; 
@@ -987,6 +987,29 @@
     color: var(--text-main);
 }
                 </style>
+                <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs } 
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ====== DÁN firebaseConfig LẤY Ở BƯỚC 1.3 VÀO ĐÂY ======
+  const firebaseConfig = {
+    apiKey: "AIzaSy...",
+    authDomain: "input-bpo.firebaseapp.com",
+    projectId: "input-bpo",
+    storageBucket: "input-bpo.firebasestorage.app",
+    messagingSenderId: "...",
+    appId: "..."
+  };
+  // ========================================================
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Đưa db và các hàm Firestore ra global để code bên dưới dùng được
+  window.firebaseDb = db;
+  window.firestoreFns = { collection, addDoc, query, where, getDocs };
+</script>
             </head>
             <body>
                 <div id="splashScreen">
@@ -1016,17 +1039,27 @@
     </div>
     <div class="auth-card" id="loginForm">
     <h2>SIGN IN</h2>
-    <input type="text" id="loginCode" placeholder="Enter WFM Code" style="margin-bottom: 20px;">
+    <input type="text" id="loginCode" placeholder="Enter WMS Code" style="margin-bottom: 15px;">
+    <input type="password" id="loginPassword" placeholder="Password" style="margin-bottom: 20px;">
+    <!-- ===== REMEMBER ME CHECKBOX ===== -->
+<div style="display:flex; align-items:center; justify-content:flex-start; margin-bottom: 20px; font-size: 13px;">
+    <input type="checkbox" id="rememberMe" style="width:16px; height:16px; margin-right:8px; cursor:pointer; accent-color: var(--primary-color);">
+    <label for="rememberMe" style="cursor:pointer; color: var(--text-inactive); font-weight: 600; user-select: none;">Remember me</label>
+</div>
+<!-- =============================== -->
     <button class="btn-submit" style="width: 100%; height: 50px;" onclick="enterApp()">LOGIN</button>
+    <div class="auth-toggle" onclick="toggleAuth('reg')">Don't have an account? <b>Register</b></div>
 </div>
     
     <div class="auth-card" id="registerForm" style="display: none;">
-        <h2>REGISTER</h2>
-        <input type="text" placeholder="Full Name" style="margin-bottom: 15px;">
-        <input type="text" placeholder="Username" style="margin-bottom: 15px;">
-        <input type="password" placeholder="Password" style="margin-bottom: 20px;">
-        <button class="btn-submit" style="width: 100%; height: 50px;" onclick="toggleAuth('login')">CREATE ACCOUNT</button>
-        <div class="auth-toggle" onclick="toggleAuth('login')">Already have an account? <b>Login</b></div>
+    <h2>REGISTER</h2>
+    <input type="text" id="regFullName" placeholder="Full Name" 
+       oninput="this.value = normalizeName(this.value);" 
+       style="margin-bottom: 15px; text-transform: uppercase;">
+    <input type="text" id="regUsername" placeholder="WMS Code" style="margin-bottom: 15px;">
+    <input type="password" id="regPassword" placeholder="Password" style="margin-bottom: 20px;">
+    <button class="btn-submit" style="width: 100%; height: 50px;" onclick="registerUser()">CREATE ACCOUNT</button>
+    <div class="auth-toggle" onclick="toggleAuth('login')">Already have an account? <b>Login</b></div>
     </div>
 </div>
 
@@ -1054,6 +1087,11 @@
                         <i class="fa-solid fa-rectangle-list" style="margin-right: 15px;"></i>
                         <span>History Fill rate</span>
                     </div> 
+
+                    <div class="user-logged-info" id="userLoggedInfo" style="display:none; margin-top: auto;">
+                        <div class="status-dot"></div>
+                        <span id="loggedUserName">-</span>
+                    </div>
                 </div>
 
                 <div class="main-content">
@@ -1488,22 +1526,152 @@ function toggleAuth(type) {
         document.getElementById('loginForm').style.display = 'block';
     }
 }
+// ====== HÀM HASH PASSWORD BẰNG SHA-256 + SALT ======
+async function hashPassword(password) {
+    const salted = password + "BPO_SECRET_2026"; // chuỗi salt cố định, có thể đổi
+    const encoder = new TextEncoder();
+    const data = encoder.encode(salted);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// ====== HÀM CHUẨN HÓA TÊN: BỎ DẤU + IN HOA + CHỈ CHỮ CÁI ======
+function normalizeName(str) {
+    return str
+        .normalize("NFD")                       
+        .replace(/[\u0300-\u036f]/g, "")        
+        .replace(/đ/g, "d").replace(/Đ/g, "D")  
+        .toUpperCase()                          
+        .replace(/[^A-Z\s]/g, "");              
+}
+// ====== LOGIN BẰNG FIREBASE FIRESTORE ======
+async function enterApp() {
+    const username = document.getElementById('loginCode').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
 
-// Vào ứng dụng chính
-function enterApp() {
-    const loginInput = document.getElementById('loginCode');
-    const validCodes = ["330154", "65116", "547243","546980","546984","325652","325650","325651","362726","336928","360987","333527","565659","547242","466794","547405"];
-    
-    if (validCodes.includes(loginInput.value.trim())) {
-        document.getElementById('authScreen').style.display = 'none';
-        document.body.classList.add('app-ready');
-        // Đảm bảo Sidebar và Main Content hiện ra
-        document.querySelector('.sidebar').style.display = 'flex';
-        document.querySelector('.main-content').style.display = 'flex';
-    } else {
-        alert("Invalid login code! Please check again");
-        loginInput.value = "";
-        loginInput.focus();
+    if (!username || !password) {
+        alert("Please enter Username and Password!");
+        return;
+    }
+
+    try {
+        const { collection, query, where, getDocs } = window.firestoreFns;
+        const db = window.firebaseDb;
+
+        // Hash password người dùng nhập rồi đem so sánh với hash đã lưu
+        const hashedPwd = await hashPassword(password);
+
+        // Query: tìm user có username + hash khớp
+        const q = query(
+            collection(db, "users"),
+            where("username", "==", username),
+            where("password", "==", hashedPwd)
+        );
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            // Lấy thông tin user đầu tiên tìm được
+            const userData = snapshot.docs[0].data();
+            // ===== KIỂM TRA TRẠNG THÁI DUYỆT =====
+    if (userData.status !== "approved") {
+        if (userData.status === "rejected") {
+            alert("❌ Your account has been rejected by admin.\nPlease contact admin for more information.");
+        } else {
+            alert("⏳ Your account is pending admin approval.\nPlease contact admin to activate your account.");
+        }
+        document.getElementById('loginPassword').value = "";
+        return; // Dừng login
+    }
+    // ====================================
+            // Lưu tên user để dùng sau (nếu cần hiển thị)
+            window.currentUser = {
+                fullName: userData.fullName,
+                username: userData.username
+            };
+            // ===== LƯU/XÓA THÔNG TIN REMEMBER ME =====
+const rememberCheckbox = document.getElementById('rememberMe');
+if (rememberCheckbox && rememberCheckbox.checked) {
+    localStorage.setItem('bpo_remember', JSON.stringify({
+        username: username,
+        password: password
+    }));
+} else {
+    localStorage.removeItem('bpo_remember');
+}
+// =========================================
+            // Mở app
+            document.getElementById('authScreen').style.display = 'none';
+            document.body.classList.add('app-ready');
+            document.querySelector('.sidebar').style.display = 'flex';
+            document.querySelector('.main-content').style.display = 'flex';
+            // ===== HIỂN THỊ TÊN USER Ở SIDEBAR =====
+            const userInfoEl = document.getElementById('userLoggedInfo');
+            const nameSpanEl = document.getElementById('loggedUserName');
+            if (userInfoEl && nameSpanEl) {
+                nameSpanEl.innerText = userData.fullName || userData.username;
+                userInfoEl.style.display = 'flex';
+            }
+        } else {
+            alert("Invalid Username or Password! Please check again.");
+            document.getElementById('loginPassword').value = "";
+            document.getElementById('loginPassword').focus();
+        }
+    } catch (err) {
+        console.error("Login error:", err);
+        alert("Login failed! Check your internet connection.\n\nError: " + err.message);
+    }
+}
+
+// ====== REGISTER USER VÀO FIRESTORE ======
+async function registerUser() {
+    const fullName = document.getElementById('regFullName').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value.trim();
+
+    if (!fullName || !username || !password) {
+        alert("Please fill in all fields!");
+        return;
+    }
+
+    if (password.length < 4) {
+        alert("Password must be at least 4 characters!");
+        return;
+    }
+
+    try {
+        const { collection, addDoc, query, where, getDocs } = window.firestoreFns;
+        const db = window.firebaseDb;
+
+        // 1. Kiểm tra username đã tồn tại chưa
+        const checkQ = query(collection(db, "users"), where("username", "==", username));
+        const checkSnap = await getDocs(checkQ);
+        if (!checkSnap.empty) {
+            alert("Username already exists! Please choose another one.");
+            return;
+        }
+
+        // 2. Hash password trước khi lưu
+        const hashedPwd = await hashPassword(password);
+
+        // 3. Thêm user mới
+        await addDoc(collection(db, "users"), {
+            fullName: fullName,
+            username: username,
+            password: hashedPwd,
+            status: "pending",        
+            createdAt: new Date().toISOString()
+        });
+
+        alert("✅ Registration submitted!\n\n⏳ Your account is pending admin approval.\nPlease contact admin to activate your account.");
+        
+        // Clear form & chuyển sang Login
+        document.getElementById('regFullName').value = "";
+        document.getElementById('regUsername').value = "";
+        document.getElementById('regPassword').value = "";
+        toggleAuth('login');
+    } catch (err) {
+        console.error("Register error:", err);
+        alert("Register failed! Error: " + err.message);
     }
 }
                     // Hàm làm tròn thời gian đến mốc 30 phút gần nhất
@@ -2703,6 +2871,19 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
     });
 }
                 window.onload = () => { 
+                    // ===== TỰ ĐỘNG ĐIỀN LẠI USERNAME/PASSWORD ĐÃ LƯU =====
+    try {
+        const saved = localStorage.getItem('bpo_remember');
+        if (saved) {
+            const { username, password } = JSON.parse(saved);
+            document.getElementById('loginCode').value = username || "";
+            document.getElementById('loginPassword').value = password || "";
+            document.getElementById('rememberMe').checked = true;
+        }
+    } catch(e) { 
+        localStorage.removeItem('bpo_remember'); // Xóa nếu data hỏng
+    }
+    // =====================================================
                     const todayISO = new Date().toISOString().split('T')[0];
                     document.getElementById('filterFillrateDate').value = todayISO;
                     document.getElementById('filterDate').value = todayISO; 
@@ -2954,48 +3135,112 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                     };
                     // Hàm xử lý đẩy dữ liệu sang Google Sheet
         // Hàm xử lý đẩy dữ liệu sang Google Sheet (Gộp 1 lần gửi)
-        window.pushToGoogleSheet = async function(btn) {
-            const row = btn.closest('tr');
-            const icon = btn.querySelector('i');
+        // ====== HÀNG ĐỢI EXPORT - TRÁNH MISS DATA KHI CLICK NHANH ======
+            window.exportQueue = [];
+            window.isProcessingQueue = false;
+            const EXPORT_DELAY_MS = 2500; // Khoảng nghỉ giữa mỗi lần gửi (ms). Tăng nếu vẫn miss.
 
-            // Lấy ID để thực hiện Double Check
-            const idIn = row.getAttribute('data-id-in');
-            const idOut = row.getAttribute('data-id-out');
+            window.pushToGoogleSheet = function(btn) {
+                const row = btn.closest('tr');
+                const icon = btn.querySelector('i');
 
-            icon.className = "fa-solid fa-spinner fa-spin";
-            btn.style.pointerEvents = "none";
+                // Đổi icon sang "đang chờ trong hàng đợi" (đồng hồ vàng)
+                icon.className = "fa-solid fa-clock";
+                btn.style.color = "#ffb800";
+                btn.style.pointerEvents = "none";
+                btn.disabled = true;
+                btn.title = "Queued, please wait...";
 
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbwVPZ0jcIJ-S1jeeVpoi0EOC1iQf_thnjk1_CYOWD_7hiejtbiBohT9aD1hl6y1swW2Dw/exec';
+                // Thêm vào hàng đợi
+                window.exportQueue.push({ row, btn, icon });
+                
+                // Hiện badge số lượng đang chờ (optional)
+                updateQueueBadge();
 
-            try {
-                // --- BƯỚC 1: DOUBLE CHECK VỚI DATABASE TRƯỚC KHI EXPORT ---
+                // Nếu chưa có processor chạy → khởi động
+                if (!window.isProcessingQueue) {
+                    processExportQueue();
+                }
+            };
+
+            // Hiển thị số lượng đang chờ trên thanh tiêu đề DATA ENTRY
+            function updateQueueBadge() {
+                let badge = document.getElementById('queueBadge');
+                if (!badge) {
+                    const target = document.getElementById('staffCountBadge');
+                    if (!target) return;
+                    badge = document.createElement('div');
+                    badge.id = 'queueBadge';
+                    badge.style.cssText = 'display:inline-block; background:rgba(255,184,0,0.15); color:#ffb800; padding:6px 14px; border-radius:12px; font-weight:800; font-size:13px; border:1px solid rgba(255,184,0,0.3); margin-left:10px;';
+                    target.parentNode.insertBefore(badge, target.nextSibling);
+                }
+                const count = window.exportQueue.length + (window.isProcessingQueue ? 1 : 0);
+                if (count > 0) {
+                    badge.innerHTML = `<i class="fa-solid fa-clock fa-spin"></i> Queue: ${count}`;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+
+            // Hàm xử lý queue tuần tự
+            async function processExportQueue() {
+                if (window.exportQueue.length === 0) {
+                    window.isProcessingQueue = false;
+                    updateQueueBadge();
+                    return;
+                }
+
+                window.isProcessingQueue = true;
+                const { row, btn, icon } = window.exportQueue.shift();
+                updateQueueBadge();
+
+                // Đổi icon thành spinner (đang gửi)
+                icon.className = "fa-solid fa-spinner fa-spin";
+                btn.style.color = "#4318ff";
+
+                try {
+                    await actuallyExportRecord(row, btn, icon);
+                } catch (e) {
+                    console.error("Queue export error:", e);
+                    icon.className = "fa-solid fa-circle-xmark";
+                    btn.style.color = "#ee5d50";
+                    btn.title = "Export failed - " + (e.message || "Unknown error");
+                }
+
+                // Đợi rồi xử lý record kế tiếp
+                setTimeout(() => {
+                    processExportQueue();
+                }, EXPORT_DELAY_MS);
+            }
+
+            // Hàm thực sự gửi 1 record sang Google Sheet
+            async function actuallyExportRecord(row, btn, icon) {
+                const idIn = row.getAttribute('data-id-in');
+                const idOut = row.getAttribute('data-id-out');
+                const scriptURL = 'https://script.google.com/macros/s/AKfycbwVPZ0jcIJ-S1jeeVpoi0EOC1iQf_thnjk1_CYOWD_7hiejtbiBohT9aD1hl6y1swW2Dw/exec';
+
+                // --- BƯỚC 1: DOUBLE CHECK DATABASE ---
                 const dbResponse = await fetch(DATABASE_API_URL);
                 const snapshot = await dbResponse.json();
                 
-                // Tìm xem record này đã bị máy khác đổi isExported thành true chưa
                 const isAlreadyExported = snapshot.some(item => 
                     ((idIn && item.id === idIn) || (idOut && item.id === idOut)) && item.isExported === true
                 );
 
                 if (isAlreadyExported) {
-                    alert("⚠️ CẢNH BÁO: Dữ liệu này vừa được một nhân viên khác Export! Bảng sẽ tự động làm mới.");
-                    loadHistoryFromDatabase(); // Tải lại bảng để khóa nút
-                    return; // Dừng ngay lập tức, không chạy phần gửi Google Sheet bên dưới nữa
+                    alert("⚠️ This record was just exported by another user. Refreshing...");
+                    loadHistoryFromDatabase();
+                    return;
                 }
-                // --- KẾT THÚC DOUBLE CHECK ---
 
-                // --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ĐỂ EXPORT (Giữ nguyên logic của bạn) ---
-                // Lấy mốc thời gian gốc để giữ ngày tháng
+                // --- BƯỚC 2: CHUẨN BỊ DỮ LIỆU ---
                 const rawTime = row.cells[6].getAttribute('data-raw');
                 const d = new Date(rawTime);
-
-                // Định dạng ngày theo chuẩn Google Sheet (VD: 02-Apr)
                 const day = d.getDate().toString().padStart(2, '0');
                 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 const formattedDate = `${day}-${months[d.getMonth()]}`;
-
-                // Bóc tách giờ IN và OUT riêng biệt từ các span
-                const timeText = row.cells[6].innerText.trim(); // Sẽ có dạng "08:00 | 17:00" hoặc chỉ "08:00"
+                const timeText = row.cells[6].innerText.trim();
                 const inTimeEl = row.cells[6].querySelector('.in-time-val');
                 const outTimeEl = row.cells[6].querySelector('.out-time-val');
 
@@ -3003,24 +3248,17 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                 if (inTimeEl) scanTypeCombo.push("IN");
                 if (outTimeEl) scanTypeCombo.push("OUT");
 
-                // --- LOGIC PHÂN LOẠI CỘT A ---
                 let teamRaw = row.cells[0].innerText.trim();
                 let whRaw = row.cells[1].innerText.trim();
                 let columnAValue = "Others"; 
-
-                if (teamRaw === 'Inbound') {
-                    columnAValue = `Inbound ${whRaw}`; 
-                } else if (teamRaw === 'Inventory' || teamRaw === 'IV') {
-                    columnAValue = 'Inventory';
-                } else if (teamRaw === 'Return') {
-                    columnAValue = 'Return';
-                } else if (teamRaw === 'Outbound') {
-                    columnAValue = 'Outbound';
-                }
+                if (teamRaw === 'Inbound') columnAValue = `Inbound ${whRaw}`;
+                else if (teamRaw === 'Inventory' || teamRaw === 'IV') columnAValue = 'Inventory';
+                else if (teamRaw === 'Return') columnAValue = 'Return';
+                else if (teamRaw === 'Outbound') columnAValue = 'Outbound';
 
                 const rowData = {
                     targetSheet: "BPO Part time",
-                    colA: columnAValue, // Giá trị đã phân loại cho cột A
+                    colA: columnAValue,
                     team: teamRaw,
                     warehouse: whRaw,
                     vendor: row.cells[2].innerText.trim(),
@@ -3029,13 +3267,13 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                     name: row.cells[5].innerText.trim(),
                     scanType: scanTypeCombo.join(" & "),
                     formattedDate: formattedDate,
-                    rawTime: d.toISOString(), // Giữ lại để GAS ghi nhận mốc thời gian chuẩn
+                    rawTime: d.toISOString(),
                     displayTime: timeText,
                     inTime: inTimeEl ? inTimeEl.innerText.trim() : "",
                     outTime: outTimeEl ? outTimeEl.innerText.trim() : ""
                 };
 
-                // Chỉ gửi đúng 1 lần sang HC
+                // --- BƯỚC 3: GỬI SANG GOOGLE SHEET ---
                 await fetch(scriptURL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -3043,31 +3281,17 @@ const bookingInteger = isNaN(bookingNum) ? 0 : Math.floor(bookingNum);
                     body: JSON.stringify(rowData)
                 });
 
-                // --- BƯỚC 3: CẬP NHẬT TRẠNG THÁI "ĐÃ TICK" LÊN DATABASE CHÍNH ---
-                try {
-                    if (idIn) await fetch(DATABASE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'UPDATE', id: idIn, isExported: true }) });
-                    if (idOut) await fetch(DATABASE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'UPDATE', id: idOut, isExported: true }) });
-                } catch(e) {
-                    console.error("Không thể khóa nút trên Database: ", e);
-                }
+                // --- BƯỚC 4: CẬP NHẬT FLAG isExported = TRUE ---
+                if (idIn) await fetch(DATABASE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'UPDATE', id: idIn, isExported: true }) });
+                if (idOut) await fetch(DATABASE_API_URL, { method: 'POST', body: JSON.stringify({ action: 'UPDATE', id: idOut, isExported: true }) });
 
-                // Đổi giao diện nút thành đã khóa tại trình duyệt hiện tại
+                // --- BƯỚC 5: CẬP NHẬT GIAO DIỆN ---
                 icon.className = "fa-solid fa-check-double";
                 btn.style.color = "#a3aed0";
                 btn.style.cursor = "not-allowed";
-                btn.disabled = true;
-                btn.onclick = null; // Gỡ bỏ sự kiện click
-                
-                alert("Export successful! Record is now locked.");
-            } catch (error) {
-                console.error("Fetch error: ", error);
-                icon.className = "fa-solid fa-circle-xmark";
-                btn.style.color = "#ee5d50";
-                alert("Data upload failed! Please try again.");
-            } finally {
-                btn.style.pointerEvents = "auto";
+                btn.title = "Already exported";
+                btn.onclick = null;
             }
-        };
         // --- TỰ ĐỘNG CẬP NHẬT DỮ LIỆU TỪ XA ---
 
 // Thiết lập thời gian tự động làm mới
