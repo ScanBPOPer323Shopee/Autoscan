@@ -1,6 +1,33 @@
             <!DOCTYPE html>
             <html lang="vi">
             <head>
+                <script>
+                    const ALLOWED_IPS = [
+                        "210.86.225.34",
+                    ];
+
+                    document.body.style.display = 'none';
+
+                    fetch('https://api.ipify.org?format=json')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (ALLOWED_IPS.some(prefix => data.ip.startsWith(prefix))) {
+                                document.body.style.display = 'block';
+                                console.log("IP hợp lệ: " + data.ip);
+                            } else {
+                                document.body.style.display = 'block';
+                                document.body.innerHTML = `
+                                    <div style="text-align:center; margin-top:100px; font-family:sans-serif;">
+                                        <h1 style="color:red;">Access Denied</h1>
+                                        <p>Your network/device (${data.ip}) is not authorized to access the system.</p>
+                                    </div>`;
+                            }
+                        })
+                        .catch(error => {
+                            document.body.style.display = 'block';
+                            document.body.innerHTML = "<h1 style='color:red; text-align:center;'>Lỗi kiểm tra bảo mật. Vui lòng thử lại.</h1>";
+                        });
+                </script>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>BPO PT System - Recording</title>
@@ -1012,6 +1039,7 @@
 </script>
             </head>
             <body>
+                
                 <div id="splashScreen">
     <div class="watermark-bg">
     RECORD SYSTEM RECORD SYSTEM RECORD SYSTEM RECORD SYSTEM RECORD SYSTEM RECORD SYSTEM
