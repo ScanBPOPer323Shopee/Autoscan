@@ -1049,6 +1049,46 @@
 .custom-select-options.show {
     animation: appFadeIn 0.25s ease-out;
 }
+
+/* ====== BPO PT INFORMATION + FILL RATE: 2 KHUNG RIÊNG ====== */
+/* Thu hẹp khung nhập liệu để có chỗ cho 3 khung trên 1 hàng */
+.section-top > .input-area { flex: 0 0 34%; }
+
+/* Khung BPO PT INFORMATION (xếp dọc từng ô) */
+.section-top > .info-area { flex: 1 1 0; }
+.section-top > .info-area.fr-mini-area { flex: 1.25 1 0; } /* khung fill rate rộng hơn chút */
+
+.info-area .info-grid { justify-content: flex-start; gap: 10px; overflow-y: auto; padding-right: 4px; }
+.info-area .info-row { flex-direction: column; gap: 10px; } /* mỗi field 1 dòng */
+.info-area .info-item { height: 44px; padding: 5px 14px; }
+.info-area .info-item span { font-size: 10px; min-width: 70px; }
+.info-area .info-item div { font-size: 12px; word-break: break-word; text-align: right; }
+
+/* Khung FILL RATE / VENDOR riêng */
+.fr-mini-area { display: flex; flex-direction: column; overflow: hidden; }
+.mini-fr-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 12px; flex-shrink: 0;
+}
+.mini-fr-header h3 { margin-bottom: 0; }
+#miniFrTeamFilter {
+    width: auto; max-width: 130px; padding: 6px 28px 6px 12px;
+    font-size: 12px; font-weight: 700; border-radius: 8px; flex-shrink: 0;
+}
+.mini-fr-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.mini-fr-table { width: 100%; border-collapse: collapse; border-spacing: 0; table-layout: fixed; }
+.mini-fr-table th {
+    position: sticky; top: 0; z-index: 5; background: #f4f7fe; color: #1b2559;
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    padding: 9px 8px; text-align: center; cursor: default; white-space: nowrap;
+}
+.mini-fr-table th:hover { color: #1b2559; }
+.mini-fr-table td {
+    font-size: 13px; font-weight: 700; padding: 9px 8px; text-align: center;
+    color: var(--text-main);
+    border: none !important; border-bottom: 1px solid #f4f7fe !important; border-radius: 0 !important;
+}
+.mini-fr-table td:first-child { text-align: left; }
                     </style>
                     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1166,7 +1206,7 @@
                         </div>
                         <div class="menu-item" onclick="showPage('fillrate', this)">
                             <i class="fa-solid fa-chart-simple" style="margin-right: 15px;"></i>
-                            <span>Fill rate</span>
+                            <span>Fill Rate Details</span>
                         </div>
                         <div class="menu-item" onclick="showPage('data-history', this)">
                             <i class="fa-solid fa-clock-rotate-left" style="margin-right: 15px;"></i>
@@ -1274,6 +1314,31 @@
                                         <div class="info-row">
                                             <div class="info-item"><span>WFM Email</span><div id="displayEmail">-</div></div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <div class="info-area fr-mini-area">
+                                    <div class="mini-fr-header">
+                                        <h3 style="margin-bottom:0;">FILL RATE</h3>
+                                        <select id="miniFrTeamFilter" onchange="renderMiniVendorFillRate()">
+                                            <option value="ALL">All Teams</option>
+                                            <option value="Inbound">Inbound</option>
+                                            <option value="Inventory">Inventory</option>
+                                            <option value="Return">Return</option>
+                                        </select>
+                                    </div>
+                                    <div class="mini-fr-scroll">
+                                        <table class="mini-fr-table">
+                                            <thead>
+                                                <tr>
+                                                    <th style="text-align:left;">Vendor</th>
+                                                    <th>Book</th>
+                                                    <th>Act</th>
+                                                    <th>Rate</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="miniFrVendorBody"></tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -2342,6 +2407,59 @@
                             updateQuickSummary(filtered);
                         }
 
+                    // === BẢNG FILL RATE MINI THEO VENDOR (khung BPO PT INFORMATION) ===
+            function renderMiniVendorFillRate() {
+                const body = document.getElementById('miniFrVendorBody');
+                if (!body) return;
+                const teamEl = document.getElementById('miniFrTeamFilter');
+                const teamFilter = teamEl ? teamEl.value : "ALL";
+
+                const vendors = ["GRGR", "HT-VN", "MBB", "Agari", "SKT"];
+                const targetTeams = ["Inbound", "Inventory", "Return"];
+                const targetStations = ["VNDB", "VNDL", "VND"];
+                const normTeam = t => (t === "IV" || t === "Inventory") ? "Inventory" : t;
+
+                const now = new Date();
+                const todayStr = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+                const todayLocale = now.toLocaleDateString('vi-VN');
+
+                const data = {};
+                vendors.forEach(v => data[v] = { b: 0, a: new Set() });
+
+                // Booking hôm nay
+                vndDatabase.forEach(item => {
+                    const dbTeam = normTeam(item.team);
+                    if (item.date !== todayStr) return;
+                    if (!targetStations.includes(item.station)) return;
+                    if (teamFilter === "ALL" ? !targetTeams.includes(dbTeam) : dbTeam !== teamFilter) return;
+                    if (data[item.vendor]) data[item.vendor].b += Math.floor(parseFloat(item.booking) || 0);
+                });
+
+                // Actual hôm nay (đếm người duy nhất đã Scan IN)
+                latestActualRecords.forEach(item => {
+                    if (item.type !== 'in') return;
+                    const aTeam = normTeam(item.team);
+                    if (new Date(item.time).toLocaleDateString('vi-VN') !== todayLocale) return;
+                    if (!targetStations.includes(item.warehouse)) return;
+                    if (teamFilter === "ALL" ? !targetTeams.includes(aTeam) : aTeam !== teamFilter) return;
+                    if (data[item.vendor]) data[item.vendor].a.add(item.code);
+                });
+
+                body.innerHTML = '';
+                vendors.forEach(v => {
+                    const b = data[v].b;
+                    const a = data[v].a.size;
+                    const rate = b > 0 ? (a / b * 100) : 0;
+                    const color = rate >= 90 ? "var(--success)" : (rate >= 50 ? "#ffb800" : "var(--danger)");
+                    body.innerHTML += `<tr>
+                        <td>${v}</td>
+                        <td>${b || '-'}</td>
+                        <td>${a || '-'}</td>
+                        <td style="color:${color}; font-weight:800;">${b > 0 ? rate.toFixed(0) + '%' : '-'}</td>
+                    </tr>`;
+                });
+            }
+
                     /* XÓA HÀM CŨ ĐI VÀ THAY BẰNG ĐOẠN NÀY */
             function calculateFillRate() {
                 const filterDateInput = document.getElementById('filterFillrateDate').value;
@@ -2514,6 +2632,9 @@
                     commitBody.innerHTML += `<tr><td style="font-weight:700;">${v}</td><td style="font-weight:800; color:${val > 0 ? 'var(--primary-color)' : '#a3aed0'};">${displayVal}</td></tr>`;
                 });
             }
+
+            // Cập nhật bảng fill rate mini trong khung BPO PT INFORMATION
+            if (typeof renderMiniVendorFillRate === 'function') renderMiniVendorFillRate();
         }
                 function renderFillRateTable(headId, bodyId, shifts, data, label, forcedKeys) {
                 const head = document.getElementById(headId);
