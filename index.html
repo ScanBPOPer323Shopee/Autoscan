@@ -155,7 +155,15 @@
                 }
 
                         .page-content { display: none; flex-direction: column; height: 100%; gap: 20px; overflow: hidden; }
-                        .page-content.active { display: flex; }
+                        .page-content.active { 
+                            display: flex; 
+                            animation: pageFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+                        }
+
+                        @keyframes pageFadeIn {
+                            from { opacity: 0; transform: translateY(15px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
 
                         .section-top {
                             display: flex;
@@ -331,6 +339,19 @@
                             padding-top: 10px;
                         }
                         h3 { color: var(--text-main); margin: 0 0 10px 0; font-size: 16px; border-left: 4px solid var(--primary-color); padding-left: 12px; }
+                        /* --- TABS: Record Attendance / Record Task --- */
+.record-mode-tabs { display: flex; gap: 8px; flex-shrink: 0; }
+.record-tab {
+    padding: 6px 14px; border-radius: 10px; font-size: 11px; font-weight: 800;
+    cursor: pointer; border: 2px solid #e0e5f2; background: #f7f9ff;
+    color: var(--text-inactive); text-transform: uppercase; letter-spacing: 0.3px;
+    transition: 0.3s; white-space: nowrap; user-select: none;
+}
+.record-tab:hover:not(.active) { border-color: var(--primary-color); color: var(--primary-color); }
+.record-tab.active {
+    background: var(--primary-color); color: white; border-color: var(--primary-color);
+    box-shadow: 0 6px 14px rgba(67, 24, 255, 0.25);
+}
                         .label { font-weight: 700; color: var(--text-main); font-size: 12px; margin-bottom: 4px; }
                         
                         /* --- STYLE MỚI CHO CHỌN SCAN IN/OUT --- */
@@ -472,10 +493,10 @@
                         /* --- ĐÃ ĐIỀU CHỈNH: SUMMARY SANG TRÁI & BUNG PHẢI --- */
         .summary-container { 
         position: fixed; 
-        bottom: 12px;     /* ← Kéo xuống dưới (giảm từ 70 xuống 30) */
-        left: 230px;      /* ← Đẩy sang phải (tăng từ 25 lên 185) */
+        bottom: 12px;
+        left: 230px;
         z-index: 9999; 
-        display: flex; 
+        display: none !important; 
         align-items: flex-end; 
     }
 
@@ -987,6 +1008,47 @@
         padding: 8px 10px !important;
         color: var(--text-main);
     }
+    /* ===== HIỆU ỨNG CHUYỂN CẢNH MƯỢT TOÀN HỆ THỐNG ===== */
+@keyframes appFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes appFadeInScale {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* 1. Chuyển tab trang chính (Recording / VND / Fillrate / History...) */
+.page-content.active {
+    animation: appFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 2. Màn hình Splash & Auth */
+#splashScreen,
+#authScreen {
+    animation: appFadeIn 0.5s ease-out;
+}
+
+/* 3. Đổi qua lại Login / Register */
+#loginForm,
+#registerForm {
+    animation: appFadeInScale 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 4. Sidebar + nội dung chính lúc vào app */
+.app-ready .sidebar      { animation: none; }
+.app-ready .main-content { animation: appFadeIn 0.6s ease-out; }
+
+/* 5. Đổi Record Attendance / Record Task */
+#attendanceView,
+#taskView {
+    animation: appFadeIn 0.35s ease-out;
+}
+
+/* 6. Dropdown filter Team bung ra */
+.custom-select-options.show {
+    animation: appFadeIn 0.25s ease-out;
+}
                     </style>
                     <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -1015,7 +1077,7 @@
                 <body>
                     <script>
                         const ALLOWED_IPS = [
-                            "210.86.225.34",
+                            "210.86.225.34","116.98.63.233"
                         ];
 
                         document.body.style.display = 'none';
@@ -1024,12 +1086,9 @@
                             .then(response => response.json())
                             .then(data => {
                                 if (ALLOWED_IPS.some(prefix => data.ip.startsWith(prefix))) {
-                                    // ✅ SỬA: dùng '' để xóa inline style, trả về CSS gốc (display: flex)
                                     document.body.style.display = '';
                                     console.log("IP hợp lệ: " + data.ip);
                                 } else {
-                                    // ❌ IP sai: cho phép hiển thị thông báo từ chối truy cập
-                                    // Ở đây dùng 'block' OK vì đã innerHTML đè lên hết, không cần flex nữa
                                     document.body.style.display = 'block';
                                     document.body.innerHTML = `
                                         <div style="text-align:center; margin-top:100px; font-family:sans-serif;">
@@ -1073,12 +1132,10 @@
         <h2>SIGN IN</h2>
         <input type="text" id="loginCode" placeholder="Enter WMS Code" style="margin-bottom: 15px;">
         <input type="password" id="loginPassword" placeholder="Password" style="margin-bottom: 20px;">
-        <!-- ===== REMEMBER ME CHECKBOX ===== -->
     <div style="display:flex; align-items:center; justify-content:flex-start; margin-bottom: 20px; font-size: 13px;">
         <input type="checkbox" id="rememberMe" style="width:16px; height:16px; margin-right:8px; cursor:pointer; accent-color: var(--primary-color);">
         <label for="rememberMe" style="cursor:pointer; color: var(--text-inactive); font-weight: 600; user-select: none;">Remember me</label>
     </div>
-    <!-- =============================== -->
         <button class="btn-submit" style="width: 100%; height: 50px;" onclick="enterApp()">LOGIN</button>
         <div class="auth-toggle" onclick="toggleAuth('reg')">Don't have an account? <b>Register</b></div>
     </div>
@@ -1130,8 +1187,21 @@
                         <div id="recordingPage" class="page-content active">
                             <div class="section-top">
                                 <div class="input-area">
-                                    <h3>INPUT WFM ID</h3>
-                                    <p id="statusMsg" style="color: var(--text-inactive); font-size: 11px; margin-bottom: 8px; margin-top: -10px;">Connecting Data...</p>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                                        <h3 style="margin-bottom:0;">INPUT WFM ID</h3>
+                                        <div class="record-mode-tabs">
+                                            <div class="record-tab active" id="tabAttendance" onclick="switchRecordMode('attendance')">
+                                                <i class="fa-solid fa-fingerprint" style="margin-right:5px;"></i>Record Attendance
+                                            </div>
+                                            <div class="record-tab" id="tabTask" onclick="switchRecordMode('task')">
+                                                <i class="fa-solid fa-list-check" style="margin-right:5px;"></i>Record Task
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p id="statusMsg" style="color: var(--text-inactive); font-size: 11px; margin-bottom: 8px; margin-top: 5px;">Connecting Data...</p>
+
+                                    <!-- ===== VIEW: RECORD ATTENDANCE ===== -->
+                                    <div id="attendanceView">
                                     
                                     <div class="scan-type-container">
                 <label class="scan-radio-option">
@@ -1172,6 +1242,21 @@
                                     <div class="input-row-group">
                                         <input type="text" id="wfmInput" placeholder="Input WFM, please..." disabled>
                                         <button id="mainConfirmBtn" class="btn-submit" onclick="handleConfirm()">CONFIRM</button>
+                                    </div>
+                                    </div>
+                                    <!-- ===== VIEW: RECORD TASK ===== -->
+                                    <div id="taskView" style="display:none;">
+                                        <div class="label" style="margin-top:15px;">Task Code</div>
+                                        <div class="input-row-group" style="margin-bottom:14px;">
+                                            <input type="text" id="taskCodeInput" placeholder="Input Task Code..."
+                                                   onkeypress="if(event.key==='Enter') document.getElementById('taskStaffInput').focus();">
+                                        </div>
+                                        <div class="label">BPO Staff ID (WFM ID)</div>
+                                        <div class="input-row-group">
+                                            <input type="text" id="taskStaffInput" placeholder="Input WFM, please..."
+                                                   onkeypress="if(event.key==='Enter') handleTaskConfirm();">
+                                            <button id="taskConfirmBtn" class="btn-submit" onclick="handleTaskConfirm()">CONFIRM</button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1758,24 +1843,29 @@
                 // URL sheet Payroll (lấy gid từ tab Payroll trong Google Sheet của bạn)
                 const payrollUrl = `${baseUrl}?gid=1695509087&single=true&output=csv`;
                 // URL WEB APP CỦA FILE GOOGLE SHEET MỚI (Dán URL lấy ở Bước 1 vào đây)
-                const autoConfirmWebAppUrl = 'https://script.google.com/macros/s/AKfycbwVPZ0jcIJ-S1jeeVpoi0EOC1iQf_thnjk1_CYOWD_7hiejtbiBohT9aD1hl6y1swW2Dw/exec'; 
-                // Hàm ĐỘC LẬP chỉ dùng cho nút Confirm
+                const autoConfirmWebAppUrl = 'https://script.google.com/macros/s/AKfycbx8AQ9Orro-CESQFv_4j3xwvxp-N3xVYXjVj2nuQIJASd8m6rnbeOeqay8TYq37ZpGGMA/exec';                // Hàm ĐỘC LẬP chỉ dùng cho nút Confirm
                 async function pushAutoConfirmToNewSheet(team, warehouse, vendor, code, userID, name, scanType) {
         if (!autoConfirmWebAppUrl || autoConfirmWebAppUrl === 'DÁN_LINK_WEB_APP_MỚI_VÀO_ĐÂY') return;
         
         const selectedTimeStr = document.getElementById('scanTimeSelect').value || "00:00";
         const formattedDate = new Date().toLocaleDateString('vi-VN');
 
+        const [hh, mm] = selectedTimeStr.split(':');
+        const rawTimeObj = new Date();
+        rawTimeObj.setHours(parseInt(hh), parseInt(mm), 0, 0);
+
         const rowData = {
-            targetSheet: "Auto scan", // CHỈ ĐỊNH SHEET ĐÍCH
+            targetSheet: "BPO Part time",   // ghi thẳng vào BPO Part time
+            isLiveScan: true,               // ĐÁNH DẤU: đây là luồng scan trực tiếp (không chống trùng)
             team: String(team || ""),
             warehouse: String(warehouse || ""),
             vendor: String(vendor || ""),
             code: String(code || ""),
             userID: String(userID || ""),
             name: String(name || ""),
-            scanType: String(scanType || ""),
-            formattedDate: formattedDate
+            scanType: String(scanType || ""), // 'in' / 'out' chữ thường
+            formattedDate: formattedDate,
+            rawTime: rawTimeObj.toISOString()
         };
 
         try {
@@ -2571,6 +2661,106 @@
             }            const input = document.getElementById('wfmInput'); if(input) input.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleConfirm(); });
 
                         function handleConfirm() { if (isManualMode) saveManualEntry(); else validateEmployee(); }
+                        // ===== CHUYỂN ĐỔI CHẾ ĐỘ: RECORD ATTENDANCE / RECORD TASK =====
+function switchRecordMode(mode) {
+    const tabAtt = document.getElementById('tabAttendance');
+    const tabTask = document.getElementById('tabTask');
+    const attView = document.getElementById('attendanceView');
+    const taskView = document.getElementById('taskView');
+    if (!tabAtt || !tabTask || !attView || !taskView) return;
+
+    if (mode === 'task') {
+        tabTask.classList.add('active'); tabAtt.classList.remove('active');
+        attView.style.display = 'none'; taskView.style.display = 'block';
+        setTimeout(() => document.getElementById('taskCodeInput').focus(), 100);
+    } else {
+        tabAtt.classList.add('active'); tabTask.classList.remove('active');
+        attView.style.display = 'block'; taskView.style.display = 'none';
+        setTimeout(() => document.getElementById('wfmInput').focus(), 100);
+    }
+}
+
+function handleTaskConfirm() {
+    const taskCode = document.getElementById('taskCodeInput').value.trim();
+    const staffVal = document.getElementById('taskStaffInput').value.trim().toUpperCase();
+
+    if (!taskCode) { alert("Vui lòng nhập Task Code!"); document.getElementById('taskCodeInput').focus(); return; }
+    if (!staffVal) { alert("Vui lòng nhập WFM ID!"); document.getElementById('taskStaffInput').focus(); return; }
+
+    const todayStr = new Date().toLocaleDateString('vi-VN');
+
+    // Tìm bản ghi SCAN IN hôm nay của nhân viên này để lấy Warehouse + Team
+    const inRecords = latestActualRecords.filter(r =>
+        (r.code || "").toString().toUpperCase() === staffVal &&
+        r.type === 'in' &&
+        new Date(r.time).toLocaleDateString('vi-VN') === todayStr
+    );
+
+    if (inRecords.length === 0) {
+        alert(`⚠️ Nhân viên [${staffVal}] chưa Scan IN hôm nay nên không xác định được Warehouse/Team cho Task.`);
+        document.getElementById('taskStaffInput').focus();
+        return;
+    }
+
+    // Nếu có nhiều bản ghi IN, lấy lần Scan IN gần nhất
+    inRecords.sort((a, b) => new Date(b.time) - new Date(a.time));
+    const scanRec = inRecords[0];
+
+    const warehouse = scanRec.warehouse;
+    const team = scanRec.team;
+    const vendor = scanRec.vendor;
+    const code = scanRec.code;
+    const userID = scanRec.userID;
+    const name = scanRec.name;
+
+    // Bổ sung email từ employeeDatabase nếu tra được
+    const emp = employeeDatabase.find(e => (e.wfmCode || "").toString().toUpperCase() === staffVal);
+    const email = (emp && emp.email) ? emp.email : "---";
+
+    // Hiển thị thông tin lên panel bên phải để xác nhận
+    document.getElementById('displayNhaThau').innerText = vendor || "---";
+    document.getElementById('displayHoTen').innerText = name || "---";
+    document.getElementById('displayWFM').innerText = code || "---";
+    document.getElementById('displayUserID').innerText = userID || "---";
+    document.getElementById('displayEmail').innerText = email;
+
+    // Dựng nhãn cột A giống logic export Attendance cũ
+    let colA = "Others";
+    if (team === 'Inbound') colA = `Inbound ${warehouse}`;
+    else if (team === 'Inventory' || team === 'IV') colA = 'Inventory';
+    else if (team === 'Return') colA = 'Return';
+    else if (team === 'Outbound') colA = 'Outbound';
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('vi-VN'); // dạng 22/6/2026
+
+    const rowData = {
+        targetSheet: "BPO Part time",
+        colA: colA,                   // A
+        team: team,                   // để Apps Script tự dựng lại nhãn cột A
+        warehouse: warehouse,         // B
+        vendor: vendor,               // C
+        code: code,                   // D
+        userID: userID,               // E
+        name: name,                   // F
+        scanType: "",                 // G (để trống cho Task)
+        formattedDate: formattedDate, // H (22/6/2026)
+        taskCode: taskCode            // J (cột I để trống)
+    };
+
+const scriptURL = 'https://script.google.com/macros/s/AKfycbx8AQ9Orro-CESQFv_4j3xwvxp-N3xVYXjVj2nuQIJASd8m6rnbeOeqay8TYq37ZpGGMA/exec';
+    fetch(scriptURL, {        
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(rowData)
+    });
+
+    alert(`✅ Đã ghi Task [${taskCode}] cho ${name} (${code}) — ${team} / ${warehouse}`);
+    document.getElementById('taskCodeInput').value = "";
+    document.getElementById('taskStaffInput').value = "";
+    document.getElementById('taskCodeInput').focus();
+}
 
                         function validateEmployee() {
                             if (!currentScanType) {
@@ -3032,19 +3222,7 @@
                                         <button class="btn-edit" onclick="toggleEdit(this)"><i class="fa-solid fa-pen-to-square"></i></button>
                                         <button class="btn-delete" onclick="deleteRecord(this)"><i class="fa-solid fa-trash-can"></i></button>
                                     `;
-                                    
-                                    // Nếu đã tick (isExported = true), khóa nút lại cho tất cả mọi người
-                                    if (data.isExported) {
-                                        actionButtonsHtml += `
-                                        <button class="btn-tick" disabled style="color: #a3aed0; background:none; border:none; cursor:not-allowed; font-size:18px; margin-left:5px;" title="Already exported">
-                                            <i class="fa-solid fa-check-double"></i>
-                                        </button>`;
-                                    } else {
-                                        actionButtonsHtml += `
-                                        <button class="btn-tick" onclick="pushToGoogleSheet(this)" style="color: #05cd99; background:none; border:none; cursor:pointer; font-size:18px; margin-left:5px;">
-                                            <i class="fa-solid fa-circle-check"></i>
-                                        </button>`;
-                                    }
+                                    // Nút tick xanh đã bỏ — scan IN/OUT tự ghi thẳng vào "BPO Part time".
 
                                     row.innerHTML = `
                                         <td>${data.team||"---"}</td>
@@ -3250,8 +3428,7 @@
                 async function actuallyExportRecord(row, btn, icon) {
                     const idIn = row.getAttribute('data-id-in');
                     const idOut = row.getAttribute('data-id-out');
-                    const scriptURL = 'https://script.google.com/macros/s/AKfycbwVPZ0jcIJ-S1jeeVpoi0EOC1iQf_thnjk1_CYOWD_7hiejtbiBohT9aD1hl6y1swW2Dw/exec';
-
+                    const scriptURL = 'https://script.google.com/macros/s/AKfycbx8AQ9Orro-CESQFv_4j3xwvxp-N3xVYXjVj2nuQIJASd8m6rnbeOeqay8TYq37ZpGGMA/exec';
                     // --- BƯỚC 1: DOUBLE CHECK DATABASE ---
                     const dbResponse = await fetch(DATABASE_API_URL);
                     const snapshot = await dbResponse.json();
